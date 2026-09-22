@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Управление ногтевым салоном — CRM</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .master-avatar { width: 70px; height: 70px; object-fit: cover; border-radius: 50%; }
+    </style>
+</head>
+<body class="bg-light">
+    <div class="container py-4">
+        <header class="pb-3 mb-4 border-bottom d-flex justify-content-between align-items-center">
+            <h1 class="h3">💅 Управление салоном: Финансы и Зарплаты</h1>
+            <div>
+                <button class="btn btn-outline-primary me-2" data-bs-toggle="modal" data-bs-target="#addMasterModal">+ Новый мастер</button>
+                <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addTransactionModal">+ Внести выручку</button>
+            </div>
+        </header>
+
+        <div class="row text-center mb-4">
+            <div class="col-md-3">
+                <div class="card p-3 shadow-sm border-0">
+                    <h6 class="text-muted">Выручка</h6>
+                    <h3 id="totalRevenue" class="text-success">0 ₽</h3>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card p-3 shadow-sm border-0">
+                    <h6 class="text-muted">Зарплаты мастеров</h6>
+                    <h3 id="totalPayroll" class="text-danger">0 ₽</h3>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card p-3 shadow-sm border-0">
+                    <h6 class="text-muted">Расходы салона</h6>
+                    <h3 id="totalExpenses" class="text-warning">0 ₽</h3>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card p-3 shadow-sm border-0">
+                    <h6 class="text-muted">Чистая прибыль</h6>
+                    <h3 id="netProfit" class="text-primary">0 ₽</h3>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-md-8">
+                <div class="card shadow-sm border-0 p-3">
+                    <h5>Динамика выручки и прибыли</h5>
+                    <canvas id="financeChart" height="120"></canvas>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card shadow-sm border-0 p-3">
+                    <h5>Итоги по периодам</h5>
+                    <ul class="list-group list-group-flush mt-2">
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            Сегодня <span id="revToday" class="fw-bold">0 ₽</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            Текущий месяц <span id="revMonth" class="fw-bold">0 ₽</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            Текущий год <span id="revYear" class="fw-bold">0 ₽</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <h3 class="mb-3">Мастера и расчет зарплат</h3>
+        <div class="row" id="staffCardsContainer"></div>
+
+        <div class="card shadow-sm border-0 p-4 mt-4">
+            <h4>Журнал операций</h4>
+            <div class="table-responsive">
+                <table class="table table-striped align-middle mt-2" id="transactionsTable">
+                    <thead>
+                        <tr>
+                            <th>Дата</th>
+                            <th>Мастер</th>
+                            <th>Клиент</th>
+                            <th>Услуга / Товар</th>
+                            <th>Сумма</th>
+                            <th>Оплата</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно: Добавление мастера -->
+    <div class="modal fade" id="addMasterModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Добавить нового мастера</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="masterForm">
+                        <div class="mb-3">
+                            <label class="form-label">Имя и Фамилия</label>
+                            <input type="text" class="form-control" id="masterName" placeholder="Анна Смирнова" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Телефон</label>
+                            <input type="text" class="form-control" id="masterPhone" placeholder="+7 (999) 000-00-00" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Возраст</label>
+                            <input type="number" class="form-control" id="masterAge" placeholder="28" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Ссылка на фото (URL)</label>
+                            <input type="url" class="form-control" id="masterPhoto" placeholder="https://example.com/photo.jpg" value="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Ставка (% от выручки)</label>
+                            <input type="number" class="form-control" id="masterPercent" placeholder="40" value="40" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">Сохранить мастера</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно: Ввод выручки -->
+    <div class="modal fade" id="addTransactionModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Ввод новой операции</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="transactionForm">
+                        <div class="mb-3">
+                            <label class="form-label">Дата</label>
+                            <input type="date" class="form-control" id="txDate" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Мастер</label>
+                            <select class="form-select" id="txMaster" required></select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Имя клиента</label>
+                            <input type="text" class="form-control" id="txClient" placeholder="Мария" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Услуга / Товар</label>
+                            <input type="text" class="form-control" id="txItem" placeholder="Маникюр с покрытием" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Сумма (₽)</label>
+                            <input type="number" class="form-control" id="txAmount" placeholder="3500" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Тип</label>
+                            <select class="form-select" id="txType">
+                                <option value="Услуга">Услуга</option>
+                                <option value="Товар">Товар</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-success w-100">Сохранить запись</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script type="module" src="app.js"></script>
+</body>
+</html>
