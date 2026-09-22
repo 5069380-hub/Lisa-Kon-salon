@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Управление ногтевым салоном — CRM</title>
+    <title>Nail Salon CRM - Finance & Payroll</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -13,36 +13,36 @@
 <body class="bg-light">
     <div class="container py-4">
         <header class="pb-3 mb-4 border-bottom d-flex justify-content-between align-items-center">
-            <h1 class="h3">💅 Управление салоном: Финансы и Зарплаты</h1>
+            <h1 class="h3">💅 Salon Management: Finance & Payroll</h1>
             <div>
-                <button class="btn btn-outline-primary me-2" data-bs-toggle="modal" data-bs-target="#addMasterModal">+ Новый мастер</button>
-                <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addTransactionModal">+ Внести выручку</button>
+                <button class="btn btn-outline-primary me-2" data-bs-toggle="modal" data-bs-target="#addMasterModal">+ New Master</button>
+                <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addTransactionModal">+ Add Revenue</button>
             </div>
         </header>
 
         <div class="row text-center mb-4">
             <div class="col-md-3">
                 <div class="card p-3 shadow-sm border-0">
-                    <h6 class="text-muted">Выручка</h6>
-                    <h3 id="totalRevenue" class="text-success">0 ₽</h3>
+                    <h6 class="text-muted">Revenue</h6>
+                    <h3 id="totalRevenue" class="text-success">$0</h3>
                 </div>
             </div>
             <div class="col-md-3">
                 <div class="card p-3 shadow-sm border-0">
-                    <h6 class="text-muted">Зарплаты мастеров</h6>
-                    <h3 id="totalPayroll" class="text-danger">0 ₽</h3>
+                    <h6 class="text-muted">Staff Payroll</h6>
+                    <h3 id="totalPayroll" class="text-danger">$0</h3>
                 </div>
             </div>
             <div class="col-md-3">
                 <div class="card p-3 shadow-sm border-0">
-                    <h6 class="text-muted">Расходы салона</h6>
-                    <h3 id="totalExpenses" class="text-warning">0 ₽</h3>
+                    <h6 class="text-muted">Salon Expenses</h6>
+                    <h3 id="totalExpenses" class="text-warning">$0</h3>
                 </div>
             </div>
             <div class="col-md-3">
                 <div class="card p-3 shadow-sm border-0">
-                    <h6 class="text-muted">Чистая прибыль</h6>
-                    <h3 id="netProfit" class="text-primary">0 ₽</h3>
+                    <h6 class="text-muted">Net Profit</h6>
+                    <h3 id="netProfit" class="text-primary">$0</h3>
                 </div>
             </div>
         </div>
@@ -50,43 +50,43 @@
         <div class="row mb-4">
             <div class="col-md-8">
                 <div class="card shadow-sm border-0 p-3">
-                    <h5>Динамика выручки и прибыли</h5>
+                    <h5>Revenue & Profit Dynamics</h5>
                     <canvas id="financeChart" height="120"></canvas>
                 </div>
             </div>
             <div class="col-md-4">
                 <div class="card shadow-sm border-0 p-3">
-                    <h5>Итоги по периодам</h5>
+                    <h5>Period Summary</h5>
                     <ul class="list-group list-group-flush mt-2">
                         <li class="list-group-item d-flex justify-content-between align-items-center">
-                            Сегодня <span id="revToday" class="fw-bold">0 ₽</span>
+                            Today <span id="revToday" class="fw-bold">$0</span>
                         </li>
                         <li class="list-group-item d-flex justify-content-between align-items-center">
-                            Текущий месяц <span id="revMonth" class="fw-bold">0 ₽</span>
+                            Current Month <span id="revMonth" class="fw-bold">$0</span>
                         </li>
                         <li class="list-group-item d-flex justify-content-between align-items-center">
-                            Текущий год <span id="revYear" class="fw-bold">0 ₽</span>
+                            Current Year <span id="revYear" class="fw-bold">$0</span>
                         </li>
                     </ul>
                 </div>
             </div>
         </div>
 
-        <h3 class="mb-3">Мастера и расчет зарплат</h3>
+        <h3 class="mb-3">Masters & Payroll Calculation</h3>
         <div class="row" id="staffCardsContainer"></div>
 
         <div class="card shadow-sm border-0 p-4 mt-4">
-            <h4>Журнал операций</h4>
+            <h4>Transactions Log</h4>
             <div class="table-responsive">
                 <table class="table table-striped align-middle mt-2" id="transactionsTable">
                     <thead>
                         <tr>
-                            <th>Дата</th>
-                            <th>Мастер</th>
-                            <th>Клиент</th>
-                            <th>Услуга / Товар</th>
-                            <th>Сумма</th>
-                            <th>Оплата</th>
+                            <th>Date</th>
+                            <th>Master</th>
+                            <th>Client</th>
+                            <th>Service / Item</th>
+                            <th>Amount</th>
+                            <th>Type</th>
                         </tr>
                     </thead>
                     <tbody></tbody>
@@ -95,81 +95,81 @@
         </div>
     </div>
 
-    <!-- Модальное окно: Добавление мастера -->
+    <!-- Modal: Add Master -->
     <div class="modal fade" id="addMasterModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Добавить нового мастера</h5>
+                    <h5 class="modal-title">Add New Master</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <form id="masterForm">
                         <div class="mb-3">
-                            <label class="form-label">Имя и Фамилия</label>
-                            <input type="text" class="form-control" id="masterName" placeholder="Анна Смирнова" required>
+                            <label class="form-label">Full Name</label>
+                            <input type="text" class="form-control" id="masterName" placeholder="Anna Smirnova" required>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">Телефон</label>
-                            <input type="text" class="form-control" id="masterPhone" placeholder="+7 (999) 000-00-00" required>
+                            <label class="form-label">Phone</label>
+                            <input type="text" class="form-control" id="masterPhone" placeholder="+1 (999) 000-0000" required>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">Возраст</label>
+                            <label class="form-label">Age</label>
                             <input type="number" class="form-control" id="masterAge" placeholder="28" required>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">Ссылка на фото (URL)</label>
+                            <label class="form-label">Photo URL</label>
                             <input type="url" class="form-control" id="masterPhoto" placeholder="https://example.com/photo.jpg" value="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150" required>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">Ставка (% от выручки)</label>
+                            <label class="form-label">Commission Rate (% of revenue)</label>
                             <input type="number" class="form-control" id="masterPercent" placeholder="40" value="40" required>
                         </div>
-                        <button type="submit" class="btn btn-primary w-100">Сохранить мастера</button>
+                        <button type="submit" class="btn btn-primary w-100">Save Master</button>
                     </form>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Модальное окно: Ввод выручки -->
+    <!-- Modal: Add Transaction -->
     <div class="modal fade" id="addTransactionModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Ввод новой операции</h5>
+                    <h5 class="modal-title">Add New Transaction</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <form id="transactionForm">
                         <div class="mb-3">
-                            <label class="form-label">Дата</label>
+                            <label class="form-label">Date</label>
                             <input type="date" class="form-control" id="txDate" required>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">Мастер</label>
+                            <label class="form-label">Master</label>
                             <select class="form-select" id="txMaster" required></select>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">Имя клиента</label>
-                            <input type="text" class="form-control" id="txClient" placeholder="Мария" required>
+                            <label class="form-label">Client Name</label>
+                            <input type="text" class="form-control" id="txClient" placeholder="Maria" required>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">Услуга / Товар</label>
-                            <input type="text" class="form-control" id="txItem" placeholder="Маникюр с покрытием" required>
+                            <label class="form-label">Service / Item</label>
+                            <input type="text" class="form-control" id="txItem" placeholder="Manicure with gel polish" required>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">Сумма (₽)</label>
-                            <input type="number" class="form-control" id="txAmount" placeholder="3500" required>
+                            <label class="form-label">Amount ($)</label>
+                            <input type="number" class="form-control" id="txAmount" placeholder="50" required>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">Тип</label>
+                            <label class="form-label">Type</label>
                             <select class="form-select" id="txType">
-                                <option value="Услуга">Услуга</option>
-                                <option value="Товар">Товар</option>
+                                <option value="Service">Service</option>
+                                <option value="Product">Product</option>
                             </select>
                         </div>
-                        <button type="submit" class="btn btn-success w-100">Сохранить запись</button>
+                        <button type="submit" class="btn btn-success w-100">Save Transaction</button>
                     </form>
                 </div>
             </div>
