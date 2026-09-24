@@ -20,7 +20,6 @@ let financeChartInstance = null;
 document.addEventListener("DOMContentLoaded", async () => {
     checkSalonSelection();
     
-    // Set default datetime-local value
     const now = new Date();
     now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
     document.getElementById('txDateTime').value = now.toISOString().slice(0, 16);
@@ -61,7 +60,7 @@ function checkSalonSelection() {
 
 function setupSalonButtons() {
     document.querySelectorAll('.salon-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
+        btn.addEventListener('click', () => {
             currentSalon = btn.getAttribute('data-salon');
             localStorage.setItem('selectedSalon', currentSalon);
             document.getElementById('currentSalonTitle').innerText = currentSalon;
@@ -164,7 +163,7 @@ function renderTransactionsTable() {
     const tbody = document.querySelector('#transactionsTable tbody');
     tbody.innerHTML = '';
     if (!appData.transactions.length) {
-        tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted">No records found for ${currentSalon}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted">No records found for salon ${currentSalon}</td></tr>`;
         return;
     }
 
@@ -258,10 +257,17 @@ function setupFormHandlers() {
             photo: document.getElementById('masterPhoto').value,
             servicePercent: Number(document.getElementById('masterPercent').value)
         };
-        await addDoc(collection(db, "staff"), newMaster);
-        bootstrap.Modal.getInstance(document.getElementById('addMasterModal')).hide();
-        e.target.reset();
-        loadAppData();
+        try {
+            await addDoc(collection(db, "staff"), newMaster);
+            const modalEl = document.getElementById('addMasterModal');
+            const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+            modal.hide();
+            e.target.reset();
+            loadAppData();
+        } catch (err) {
+            console.error("Error saving master:", err);
+            alert("Failed to save master. Check Firestore rules.");
+        }
     });
 
     document.getElementById('addServiceForm').addEventListener('submit', async (e) => {
@@ -300,9 +306,16 @@ function setupFormHandlers() {
             record.category = document.getElementById('txExpenseCategory').value;
         }
 
-        await addDoc(collection(db, "transactions"), record);
-        bootstrap.Modal.getInstance(document.getElementById('addTransactionModal')).hide();
-        loadAppData();
+        try {
+            await addDoc(collection(db, "transactions"), record);
+            const modalEl = document.getElementById('addTransactionModal');
+            const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+            modal.hide();
+            loadAppData();
+        } catch (err) {
+            console.error("Error saving transaction:", err);
+            alert("Failed to save transaction.");
+        }
     });
 }
 
