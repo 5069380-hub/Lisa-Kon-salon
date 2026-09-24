@@ -3,24 +3,58 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nail Salon CRM - Finance & Payroll</title>
+    <title>Nail Salon CRM - Multi-Location Management</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        .master-avatar { width: 70px; height: 70px; object-fit: cover; border-radius: 50%; }
+        .master-avatar { width: 60px; height: 60px; object-fit: cover; border-radius: 50%; }
+        .salon-selector-bg { background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); }
     </style>
 </head>
 <body class="bg-light">
+
+    <!-- SALON SELECTION MODAL (Mandatory on start) -->
+    <div class="modal fade" id="salonSelectModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content shadow-lg border-0">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">🏢 Select Working Location</h5>
+                </div>
+                <div class="modal-body text-center py-4">
+                    <p class="text-muted mb-4">Please select the salon location you are managing right now:</p>
+                    <div class="d-grid gap-3">
+                        <button class="btn btn-outline-primary btn-lg p-3 text-start d-flex justify-content-between align-items-center salon-btn" data-salon="Cross Creek Ranch (Malibu)">
+                            <span><strong>Cross Creek Ranch</strong><br><small class="text-muted">Malibu, CA</small></span>
+                            <span class="badge bg-primary">Select</span>
+                        </button>
+                        <button class="btn btn-outline-primary btn-lg p-3 text-start d-flex justify-content-between align-items-center salon-btn" data-salon="NoHo Salon">
+                            <span><strong>NoHo Salon</strong><br><small class="text-muted">North Hollywood, CA</small></span>
+                            <span class="badge bg-primary">Select</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="container py-4">
-        <header class="pb-3 mb-4 border-bottom d-flex justify-content-between align-items-center">
-            <h1 class="h3">💅 Salon Management: Finance & Payroll</h1>
+        <!-- HEADER -->
+        <header class="pb-3 mb-4 border-bottom d-flex justify-content-between align-items-center flex-wrap gap-3">
             <div>
-                <button class="btn btn-outline-primary me-2" data-bs-toggle="modal" data-bs-target="#addMasterModal">+ New Master</button>
-                <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addTransactionModal">+ Add Revenue</button>
+                <h1 class="h3 mb-0">💅 Nail Salon CRM</h1>
+                <span class="text-muted small">Current Location: <strong id="currentSalonTitle" class="text-primary">-</strong></span>
+                <button class="btn btn-sm btn-link p-0 ms-2 text-decoration-none" id="changeSalonBtn">(Change Salon)</button>
+            </div>
+            <div class="d-flex gap-2 flex-wrap">
+                <button class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#manageServicesModal">⚙️ Services</button>
+                <button class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#manageExpensesModal">💸 Expenses Config</button>
+                <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addMasterModal">+ New Master</button>
+                <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addTransactionModal">+ New Record</button>
             </div>
         </header>
 
-        <div class="row text-center mb-4">
+        <!-- KPI CARDS -->
+        <div class="row text-center mb-4 g-3">
             <div class="col-md-3">
                 <div class="card p-3 shadow-sm border-0">
                     <h6 class="text-muted">Revenue</h6>
@@ -47,17 +81,18 @@
             </div>
         </div>
 
-        <div class="row mb-4">
+        <!-- CHARTS & PERIODS -->
+        <div class="row mb-4 g-3">
             <div class="col-md-8">
-                <div class="card shadow-sm border-0 p-3">
-                    <h5>Revenue & Profit Dynamics</h5>
-                    <canvas id="financeChart" height="120"></canvas>
+                <div class="card shadow-sm border-0 p-3 h-100">
+                    <h5>Financial Dynamics</h5>
+                    <canvas id="financeChart" height="130"></canvas>
                 </div>
             </div>
             <div class="col-md-4">
-                <div class="card shadow-sm border-0 p-3">
+                <div class="card shadow-sm border-0 p-3 h-100">
                     <h5>Period Summary</h5>
-                    <ul class="list-group list-group-flush mt-2">
+                    <ul class="list-group list-group-flush mt-3">
                         <li class="list-group-item d-flex justify-content-between align-items-center">
                             Today <span id="revToday" class="fw-bold">$0</span>
                         </li>
@@ -72,19 +107,20 @@
             </div>
         </div>
 
-        <h3 class="mb-3">Masters & Payroll Calculation</h3>
-        <div class="row" id="staffCardsContainer"></div>
+        <!-- MASTERS SECTION -->
+        <h3 class="mb-3">Masters & Payroll</h3>
+        <div class="row g-3 mb-4" id="staffCardsContainer"></div>
 
-        <div class="card shadow-sm border-0 p-4 mt-4">
-            <h4>Transactions Log</h4>
+        <!-- TRANSACTIONS LOG -->
+        <div class="card shadow-sm border-0 p-4">
+            <h4>Operations Log</h4>
             <div class="table-responsive">
                 <table class="table table-striped align-middle mt-2" id="transactionsTable">
                     <thead>
                         <tr>
-                            <th>Date</th>
+                            <th>Date / Time</th>
                             <th>Master</th>
-                            <th>Client</th>
-                            <th>Service / Item</th>
+                            <th>Service</th>
                             <th>Amount</th>
                             <th>Type</th>
                         </tr>
@@ -95,7 +131,60 @@
         </div>
     </div>
 
-    <!-- Modal: Add Master -->
+    <!-- MODAL: ADD TRANSACTION (NEW RECORD) -->
+    <div class="modal fade" id="addTransactionModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">New Service Record / Expense</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="transactionForm">
+                        <div class="mb-3">
+                            <label class="form-label">Type</label>
+                            <select class="form-select" id="recordTypeSelector">
+                                <option value="Service">Client Service (Revenue)</option>
+                                <option value="Expense">Salon Expense</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Date & Time</label>
+                            <input type="datetime-local" class="form-control" id="txDateTime" required>
+                        </div>
+                        
+                        <!-- Service Fields -->
+                        <div id="serviceFieldsContainer">
+                            <div class="mb-3">
+                                <label class="form-label">Master</label>
+                                <select class="form-select" id="txMaster"></select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Service</label>
+                                <select class="form-select" id="txService"></select>
+                            </div>
+                        </div>
+
+                        <!-- Expense Fields -->
+                        <div id="expenseFieldsContainer" style="display: none;">
+                            <div class="mb-3">
+                                <label class="form-label">Expense Category</label>
+                                <select class="form-select" id="txExpenseCategory"></select>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Amount ($)</label>
+                            <input type="number" step="0.01" class="form-control" id="txAmount" placeholder="50" required>
+                        </div>
+                        <button type="submit" class="btn btn-success w-100">Save Record</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: ADD MASTER -->
     <div class="modal fade" id="addMasterModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
@@ -114,16 +203,12 @@
                             <input type="text" class="form-control" id="masterPhone" placeholder="+1 (999) 000-0000" required>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">Age</label>
-                            <input type="number" class="form-control" id="masterAge" placeholder="28" required>
-                        </div>
-                        <div class="mb-3">
                             <label class="form-label">Photo URL</label>
-                            <input type="url" class="form-control" id="masterPhoto" placeholder="https://example.com/photo.jpg" value="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150" required>
+                            <input type="url" class="form-control" id="masterPhoto" value="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150" required>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Commission Rate (% of revenue)</label>
-                            <input type="number" class="form-control" id="masterPercent" placeholder="40" value="40" required>
+                            <input type="number" class="form-control" id="masterPercent" value="40" required>
                         </div>
                         <button type="submit" class="btn btn-primary w-100">Save Master</button>
                     </form>
@@ -132,45 +217,50 @@
         </div>
     </div>
 
-    <!-- Modal: Add Transaction -->
-    <div class="modal fade" id="addTransactionModal" tabindex="-1">
+    <!-- MODAL: MANAGE SERVICES -->
+    <div class="modal fade" id="manageServicesModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Add New Transaction</h5>
+                    <h5 class="modal-title">Manage Services & Prices</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <form id="transactionForm">
-                        <div class="mb-3">
-                            <label class="form-label">Date</label>
-                            <input type="date" class="form-control" id="txDate" required>
+                    <form id="addServiceForm" class="mb-3 pb-3 border-bottom">
+                        <h6>Add New Service</h6>
+                        <div class="mb-2">
+                            <input type="text" class="form-control" id="serviceNameInput" placeholder="Manicure with Gel Polish" required>
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label">Master</label>
-                            <select class="form-select" id="txMaster" required></select>
+                        <div class="mb-2">
+                            <input type="number" step="0.01" class="form-control" id="servicePriceInput" placeholder="Default Price ($)" required>
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label">Client Name</label>
-                            <input type="text" class="form-control" id="txClient" placeholder="Maria" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Service / Item</label>
-                            <input type="text" class="form-control" id="txItem" placeholder="Manicure with gel polish" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Amount ($)</label>
-                            <input type="number" class="form-control" id="txAmount" placeholder="50" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Type</label>
-                            <select class="form-select" id="txType">
-                                <option value="Service">Service</option>
-                                <option value="Product">Product</option>
-                            </select>
-                        </div>
-                        <button type="submit" class="btn btn-success w-100">Save Transaction</button>
+                        <button type="submit" class="btn btn-sm btn-primary w-100">+ Add Service</button>
                     </form>
+                    <h6>Existing Services</h6>
+                    <ul class="list-group" id="servicesListContainer"></ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: MANAGE EXPENSE CATEGORIES -->
+    <div class="modal fade" id="manageExpensesModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Manage Expense Categories</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="addExpenseCatForm" class="mb-3 pb-3 border-bottom">
+                        <h6>Add Expense Category</h6>
+                        <div class="mb-2">
+                            <input type="text" class="form-control" id="expenseCatNameInput" placeholder="Rent, Materials, Utilities..." required>
+                        </div>
+                        <button type="submit" class="btn btn-sm btn-primary w-100">+ Add Category</button>
+                    </form>
+                    <h6>Existing Categories</h6>
+                    <ul class="list-group" id="expenseCatListContainer"></ul>
                 </div>
             </div>
         </div>
