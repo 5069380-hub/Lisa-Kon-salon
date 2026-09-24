@@ -10,6 +10,14 @@
         .master-avatar { width: 60px; height: 60px; object-fit: cover; border-radius: 50%; }
         .header-toolbar { display: flex; flex-wrap: nowrap; align-items: center; gap: 10px; overflow-x: auto; white-space: nowrap; }
         .service-checkbox-item { background: #f8f9fa; border-radius: 6px; padding: 8px 12px; margin-bottom: 6px; border: 1px solid #dee2e6; }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
+        .calendar-day-header { text-align: center; font-weight: bold; color: #6c757d; font-size: 0.85rem; }
+        .calendar-cell { min-height: 90px; border: 1px solid #dee2e6; border-radius: 8px; padding: 8px; background: #fff; cursor: pointer; transition: all 0.2s; position: relative; }
+        .calendar-cell:hover { background: #f1f3f5; border-color: #adb5bd; }
+        .calendar-cell.has-data { background: #e8f5e9; border-color: #c8e6c9; }
+        .calendar-cell.today { border: 2px solid #0d6efd; }
+        .day-number { font-weight: bold; font-size: 0.9rem; }
+        .day-stats { font-size: 0.75rem; margin-top: 4px; color: #198754; }
     </style>
 </head>
 <body class="bg-light">
@@ -38,6 +46,105 @@
         </div>
     </div>
 
+    <!-- MODAL: FINANCIAL REPORT -->
+    <div class="modal fade" id="financialModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title">📊 Financial Report & Analytics</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body bg-light">
+                    <!-- KPI CARDS -->
+                    <div class="row text-center mb-4 g-3">
+                        <div class="col-md-3">
+                            <div class="card p-3 shadow-sm border-0">
+                                <h6 class="text-muted">Revenue</h6>
+                                <h3 id="totalRevenue" class="text-success">$0</h3>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card p-3 shadow-sm border-0">
+                                <h6 class="text-muted">Staff Payroll</h6>
+                                <h3 id="totalPayroll" class="text-danger">$0</h3>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card p-3 shadow-sm border-0">
+                                <h6 class="text-muted">Salon Expenses</h6>
+                                <h3 id="totalExpenses" class="text-warning">$0</h3>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card p-3 shadow-sm border-0">
+                                <h6 class="text-muted">Net Profit</h6>
+                                <h3 id="netProfit" class="text-primary">$0</h3>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- CHARTS & PERIODS -->
+                    <div class="row mb-4 g-3">
+                        <div class="col-md-8">
+                            <div class="card shadow-sm border-0 p-3 h-100">
+                                <h5>Financial Dynamics</h5>
+                                <canvas id="financeChart" height="130"></canvas>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card shadow-sm border-0 p-3 h-100">
+                                <h5>Period Summary</h5>
+                                <ul class="list-group list-group-flush mt-3">
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        Today <span id="revToday" class="fw-bold">$0</span>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        Current Month <span id="revMonth" class="fw-bold">$0</span>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        Current Year <span id="revYear" class="fw-bold">$0</span>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: DAY DETAILS VIEW -->
+    <div class="modal fade" id="dayDetailModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">📅 Transactions for <span id="modalDateTitle"></span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 class="text-muted mb-0">Daily Summary: <strong id="modalDayTotal" class="text-success">$0</strong></h6>
+                        <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#addTransactionModal" id="addRecordForDayBtn">+ Add Record This Day</button>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-striped align-middle" id="dayTransactionsTable">
+                            <thead>
+                                <tr>
+                                    <th>Time</th>
+                                    <th>Master / Category</th>
+                                    <th>Service / Details</th>
+                                    <th>Amount</th>
+                                    <th>Type</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="container-fluid py-3 px-4">
         <!-- HEADER IN ONE LINE -->
         <header class="pb-3 mb-4 border-bottom d-flex justify-content-between align-items-center flex-nowrap overflow-auto gap-3">
@@ -48,6 +155,7 @@
             </div>
             
             <div class="header-toolbar">
+                <button class="btn btn-sm btn-outline-dark" data-bs-toggle="modal" data-bs-target="#financialModal">📊 Financial Report</button>
                 <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#manageServicesModal">⚙️ Services</button>
                 <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#manageExpensesModal">💸 Expenses Config</button>
                 <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addMasterModal">+ New Master</button>
@@ -55,81 +163,35 @@
             </div>
         </header>
 
-        <!-- KPI CARDS -->
-        <div class="row text-center mb-4 g-3">
-            <div class="col-md-3">
-                <div class="card p-3 shadow-sm border-0">
-                    <h6 class="text-muted">Revenue</h6>
-                    <h3 id="totalRevenue" class="text-success">$0</h3>
+        <!-- MAIN CONTENT: MONTHLY CALENDAR -->
+        <div class="card shadow-sm border-0 p-4 mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h3 id="calendarMonthTitle" class="mb-0">Current Month Calendar</h3>
+                <div class="btn-group">
+                    <button class="btn btn-outline-secondary btn-sm" id="prevMonthBtn">◀ Prev</button>
+                    <button class="btn btn-outline-secondary btn-sm" id="currentMonthBtn">Today</button>
+                    <button class="btn btn-outline-secondary btn-sm" id="nextMonthBtn">Next ▶</button>
                 </div>
             </div>
-            <div class="col-md-3">
-                <div class="card p-3 shadow-sm border-0">
-                    <h6 class="text-muted">Staff Payroll</h6>
-                    <h3 id="totalPayroll" class="text-danger">$0</h3>
-                </div>
+            
+            <div class="calendar-grid mb-2">
+                <div class="calendar-day-header">Mon</div>
+                <div class="calendar-day-header">Tue</div>
+                <div class="calendar-day-header">Wed</div>
+                <div class="calendar-day-header">Thu</div>
+                <div class="calendar-day-header">Fri</div>
+                <div class="calendar-day-header">Sat</div>
+                <div class="calendar-day-header">Sun</div>
             </div>
-            <div class="col-md-3">
-                <div class="card p-3 shadow-sm border-0">
-                    <h6 class="text-muted">Salon Expenses</h6>
-                    <h3 id="totalExpenses" class="text-warning">$0</h3>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card p-3 shadow-sm border-0">
-                    <h6 class="text-muted">Net Profit</h6>
-                    <h3 id="netProfit" class="text-primary">$0</h3>
-                </div>
-            </div>
-        </div>
-
-        <!-- CHARTS & PERIODS & CALENDAR -->
-        <div class="row mb-4 g-3">
-            <div class="col-md-8">
-                <div class="card shadow-sm border-0 p-3 h-100">
-                    <h5>Financial Dynamics</h5>
-                    <canvas id="financeChart" height="130"></canvas>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card shadow-sm border-0 p-3 h-100">
-                    <h5>Calendar & Daily View</h5>
-                    <div class="mb-3 mt-2">
-                        <label class="form-label small text-muted">Select Date to View Transactions:</label>
-                        <input type="date" class="form-control" id="calendarDateSelect">
-                    </div>
-                    <div class="border rounded p-2 bg-white" style="max-height: 180px; overflow-y: auto;" id="dailyViewContainer">
-                        <small class="text-muted">Select a date above to inspect records.</small>
-                    </div>
-                </div>
-            </div>
+            <div class="calendar-grid" id="calendarDaysContainer"></div>
         </div>
 
         <!-- MASTERS SECTION -->
         <h3 class="mb-3">Masters & Payroll</h3>
         <div class="row g-3 mb-4" id="staffCardsContainer"></div>
-
-        <!-- TRANSACTIONS LOG -->
-        <div class="card shadow-sm border-0 p-4">
-            <h4>All Operations Log</h4>
-            <div class="table-responsive">
-                <table class="table table-striped align-middle mt-2" id="transactionsTable">
-                    <thead>
-                        <tr>
-                            <th>Date / Time</th>
-                            <th>Master / Category</th>
-                            <th>Service / Details</th>
-                            <th>Amount</th>
-                            <th>Type</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
-            </div>
-        </div>
     </div>
 
-    <!-- MODAL: ADD TRANSACTION (MULTI-SERVICE) -->
+    <!-- MODAL: ADD TRANSACTION -->
     <div class="modal fade" id="addTransactionModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
@@ -158,9 +220,7 @@
                             </div>
                             <div class="mb-3">
                                 <label class="form-label">Select Services (Check one or multiple)</label>
-                                <div id="servicesCheckboxesContainer" class="border rounded p-2" style="max-height: 200px; overflow-y: auto;">
-                                    <!-- Populated dynamically -->
-                                </div>
+                                <div id="servicesCheckboxesContainer" class="border rounded p-2" style="max-height: 200px; overflow-y: auto;"></div>
                             </div>
                         </div>
 
