@@ -16,19 +16,15 @@ const db = getFirestore(app);
 let currentSalon = localStorage.getItem('selectedSalon') || null;
 let appData = { staff: [], transactions: [], services: [], expenseCategories: [] };
 let financeChartInstance = null;
+let currentCalendarDate = new Date();
+let selectedActiveDateStr = '';
 
 document.addEventListener("DOMContentLoaded", async () => {
     checkSalonSelection();
     
     const now = new Date();
     now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-    const todayStr = now.toISOString().slice(0, 10);
     document.getElementById('txDateTime').value = now.toISOString().slice(0, 16);
-    document.getElementById('calendarDateSelect').value = todayStr;
-
-    document.getElementById('calendarDateSelect').addEventListener('change', () => {
-        renderDailyView();
-    });
 
     document.getElementById('recordTypeSelector').addEventListener('change', (e) => {
         const isService = e.target.value === 'Service';
@@ -39,6 +35,21 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.getElementById('changeSalonBtn').addEventListener('click', () => {
         localStorage.removeItem('selectedSalon');
         location.reload();
+    });
+
+    document.getElementById('prevMonthBtn').addEventListener('click', () => {
+        currentCalendarDate.setMonth(currentCalendarDate.getMonth() - 1);
+        renderCalendar();
+    });
+
+    document.getElementById('nextMonthBtn').addEventListener('click', () => {
+        currentCalendarDate.setMonth(currentCalendarDate.getMonth() + 1);
+        renderCalendar();
+    });
+
+    document.getElementById('currentMonthBtn').addEventListener('click', () => {
+        currentCalendarDate = new Date();
+        renderCalendar();
     });
 
     setupSalonButtons();
@@ -95,10 +106,9 @@ async function loadAppData() {
 function renderApp() {
     renderDropdowns();
     renderStaffCards();
-    renderTransactionsTable();
     renderConfigLists();
     calculateAndRenderFinancials();
-    renderDailyView();
+    renderCalendar();
 }
 
 function renderDropdowns() {
@@ -108,7 +118,6 @@ function renderDropdowns() {
         masterSelect.innerHTML += `<option value="${s.name}">${s.name}</option>`;
     });
 
-    // Render Services Checkboxes for multi-selection
     const srvContainer = document.getElementById('servicesCheckboxesContainer');
     srvContainer.innerHTML = appData.services.length ? '' : '<span class="text-muted small">No services configured</span>';
     appData.services.forEach((srv, index) => {
@@ -123,7 +132,6 @@ function renderDropdowns() {
         `;
     });
 
-    // Add event listeners to calculate total sum automatically when checkboxes change
     document.querySelectorAll('.service-chk').forEach(chk => {
         chk.addEventListener('change', updateCalculatedAmount);
     });
@@ -137,13 +145,91 @@ function renderDropdowns() {
 
 function updateCalculatedAmount() {
     let total = 0;
-    let selectedNames = [];
     document.querySelectorAll('.service-chk:checked').forEach(chk => {
         total += Number(chk.dataset.price);
-        selectedNames.push(chk.value);
     });
     document.getElementById('txAmount').value = total;
 }
+
+function renderCalendar() {
+    const container = document.getElementById('calendarDaysContainer');
+    container.innerHTML = '';
+
+    const year = currentCalendarDate.getFullYear();
+    const month = currentCalendarDate.getMonth();
+
+    const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    document.getElementById('calendarMonthTitle').innerText = `${monthNames[month]} ${year}`;
+
+    const firstDayIndex = (new Date(year, month, 1).getDay() + 6) % 7; // Monday start
+    const totalDays = new Date(year, month + 1, 0).getDate();
+    const todayStr = new Date().toISOString().slice(0, 10);
+
+    // Empty cells for previous month offset
+    for (let i = 0; i < firstDayIndex; i++) {
+        container.innerHTML += `<div class="calendar-cell bg-light opacity-50"></div>`;
+    }
+
+    for (let day = 1; day <= totalDays; day++) {
+        const dayStr = String(day).padStart(2, '0');
+        const monthStr = String(month + 1).padStart(2, '0');
+        const dateString = `${year}-${monthStr}-${dayStr}`;
+
+        let dayRev = 0;
+        appData.transactions.forEach(t => {
+            if (t.dateTime.startsWith(dateString) && t.type === 'Service') {
+                dayRev += Number(t.amount);
+            }
+        });
+
+        const hasData = dayRev > 0 ? 'has-data' : '';
+        const isToday = dateString === todayStr ? 'today' : '';
+
+        container.innerHTML += `
+            <div class="calendar-cell ${hasData} ${isToday}" onclick="openDayDetails('${dateString}')">
+                <div class="day-number">${day}</div>
+                ${dayRev > 0 ? `<div class="day-stats">+$${dayRev.toLocaleString()}</div>` : ''}
+            </div>
+        `;
+    }
+}
+
+window.openDayDetails = function(dateStr) {
+    selectedActiveDateStr = dateStr;
+    document.getElementById('modalDateTitle').innerText = dateStr;
+
+    // Set modal transaction date default
+    document.getElementById('txDateTime').value = `${dateStr}T12:00`;
+
+    const tbody = document.querySelector('#dayTransactionsTable tbody');
+    tbody.innerHTML = '';
+
+    const dayTx = appData.transactions.filter(t => t.dateTime.startsWith(dateStr));
+    let dayTotal = 0;
+
+    if (!dayTx.length) {
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted">No records for this day</td></tr>`;
+    } else {
+        dayTx.sort((a, b) => new Date(b.dateTime) - new Date(a.dateTime)).forEach(t => {
+            if (t.type === 'Service') dayTotal += Number(t.amount);
+            const badge = t.type === 'Service' ? '<span class="badge bg-success">Service</span>' : '<span class="badge bg-warning text-dark">Expense</span>';
+            tbody.innerHTML += `
+                <tr>
+                    <td>${t.dateTime.split('T')[1]}</td>
+                    <td>${t.master || t.category || '-'}</td>
+                    <td>${t.service || t.category || '-'}</td>
+                    <td>$${Number(t.amount).toLocaleString()}</td>
+                    <td>${badge}</td>
+                </tr>
+            `;
+        });
+    }
+
+    document.getElementById('modalDayTotal').innerText = '$' + dayTotal.toLocaleString();
+    
+    const dayModal = new bootstrap.Modal(document.getElementById('dayDetailModal'));
+    dayModal.show();
+};
 
 function renderStaffCards() {
     const container = document.getElementById('staffCardsContainer');
@@ -175,52 +261,6 @@ function renderStaffCards() {
                     <div class="d-flex justify-content-between mb-1"><span>Master Revenue:</span><strong class="text-success">$${rev.toLocaleString()}</strong></div>
                     <div class="d-flex justify-content-between"><span>Payout:</span><strong class="text-danger">$${Math.round(payout).toLocaleString()}</strong></div>
                 </div>
-            </div>
-        `;
-    });
-}
-
-function renderTransactionsTable() {
-    const tbody = document.querySelector('#transactionsTable tbody');
-    tbody.innerHTML = '';
-    if (!appData.transactions.length) {
-        tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted">No records found for salon ${currentSalon}</td></tr>`;
-        return;
-    }
-
-    appData.transactions.sort((a, b) => new Date(b.dateTime) - new Date(a.dateTime)).forEach(t => {
-        const badge = t.type === 'Service' ? '<span class="badge bg-success">Service</span>' : '<span class="badge bg-warning text-dark">Expense</span>';
-        tbody.innerHTML += `
-            <tr>
-                <td>${t.dateTime.replace('T', ' ')}</td>
-                <td>${t.master || t.category || '-'}</td>
-                <td>${t.service || t.category || '-'}</td>
-                <td>$${Number(t.amount).toLocaleString()}</td>
-                <td>${badge}</td>
-            </tr>
-        `;
-    });
-}
-
-function renderDailyView() {
-    const selectedDate = document.getElementById('calendarDateSelect').value;
-    const container = document.getElementById('dailyViewContainer');
-    container.innerHTML = '';
-
-    const dayTransactions = appData.transactions.filter(t => t.dateTime.startsWith(selectedDate));
-
-    if (!dayTransactions.length) {
-        container.innerHTML = `<small class="text-muted">No records for ${selectedDate}</small>`;
-        return;
-    }
-
-    dayTransactions.forEach(t => {
-        const title = t.type === 'Service' ? `${t.master} (${t.service})` : `Expense: ${t.category}`;
-        const color = t.type === 'Service' ? 'text-success' : 'text-warning';
-        container.innerHTML += `
-            <div class="d-flex justify-content-between align-items-center border-bottom pb-1 mb-1 small">
-                <div><strong>${t.dateTime.split('T')[1]}</strong> - ${title}</div>
-                <div class="fw-bold ${color}">$${Number(t.amount).toLocaleString()}</div>
             </div>
         `;
     });
@@ -304,9 +344,7 @@ function setupFormHandlers() {
         };
         try {
             await addDoc(collection(db, "staff"), newMaster);
-            const modalEl = document.getElementById('addMasterModal');
-            const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
-            modal.hide();
+            bootstrap.Modal.getInstance(document.getElementById('addMasterModal')).hide();
             e.target.reset();
             loadAppData();
         } catch (err) {
@@ -357,10 +395,11 @@ function setupFormHandlers() {
 
         try {
             await addDoc(collection(db, "transactions"), record);
-            const modalEl = document.getElementById('addTransactionModal');
-            const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
-            modal.hide();
+            bootstrap.Modal.getInstance(document.getElementById('addTransactionModal')).hide();
             loadAppData();
+            if (selectedActiveDateStr) {
+                openDayDetails(selectedActiveDateStr);
+            }
         } catch (err) {
             console.error("Error saving transaction:", err);
             alert("Failed to save transaction.");
