@@ -3,17 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nail Salon CRM - Multi-Location Management</title>
+    <title>Nail Salon CRM - SC & BH</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         .master-avatar { width: 60px; height: 60px; object-fit: cover; border-radius: 50%; }
-        .salon-selector-bg { background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); }
+        .header-toolbar { display: flex; flex-wrap: nowrap; align-items: center; gap: 10px; overflow-x: auto; white-space: nowrap; }
     </style>
 </head>
 <body class="bg-light">
 
-    <!-- SALON SELECTION MODAL (Mandatory on start) -->
+    <!-- SALON SELECTION MODAL (SC & BH) -->
     <div class="modal fade" id="salonSelectModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content shadow-lg border-0">
@@ -21,15 +21,15 @@
                     <h5 class="modal-title">🏢 Select Working Location</h5>
                 </div>
                 <div class="modal-body text-center py-4">
-                    <p class="text-muted mb-4">Please select the salon location you are managing right now:</p>
+                    <p class="text-muted mb-4">Please select the salon location:</p>
                     <div class="d-grid gap-3">
-                        <button class="btn btn-outline-primary btn-lg p-3 text-start d-flex justify-content-between align-items-center salon-btn" data-salon="Cross Creek Ranch (Malibu)">
-                            <span><strong>Cross Creek Ranch</strong><br><small class="text-muted">Malibu, CA</small></span>
-                            <span class="badge bg-primary">Select</span>
+                        <button class="btn btn-outline-primary btn-lg p-3 text-start d-flex justify-content-between align-items-center salon-btn" data-salon="SC">
+                            <span><strong>SC</strong><br><small class="text-muted">Cross Creek Ranch, Malibu</small></span>
+                            <span class="badge bg-primary">Select SC</span>
                         </button>
-                        <button class="btn btn-outline-primary btn-lg p-3 text-start d-flex justify-content-between align-items-center salon-btn" data-salon="NoHo Salon">
-                            <span><strong>NoHo Salon</strong><br><small class="text-muted">North Hollywood, CA</small></span>
-                            <span class="badge bg-primary">Select</span>
+                        <button class="btn btn-outline-primary btn-lg p-3 text-start d-flex justify-content-between align-items-center salon-btn" data-salon="BH">
+                            <span><strong>BH</strong><br><small class="text-muted">Beverly Hills</small></span>
+                            <span class="badge bg-primary">Select BH</span>
                         </button>
                     </div>
                 </div>
@@ -37,19 +37,20 @@
         </div>
     </div>
 
-    <div class="container py-4">
-        <!-- HEADER -->
-        <header class="pb-3 mb-4 border-bottom d-flex justify-content-between align-items-center flex-wrap gap-3">
-            <div>
-                <h1 class="h3 mb-0">💅 Nail Salon CRM</h1>
-                <span class="text-muted small">Current Location: <strong id="currentSalonTitle" class="text-primary">-</strong></span>
-                <button class="btn btn-sm btn-link p-0 ms-2 text-decoration-none" id="changeSalonBtn">(Change Salon)</button>
+    <div class="container-fluid py-3 px-4">
+        <!-- HEADER IN ONE LINE -->
+        <header class="pb-3 mb-4 border-bottom d-flex justify-content-between align-items-center flex-nowrap overflow-auto gap-3">
+            <div class="d-flex align-items-center gap-2 flex-shrink-0">
+                <h1 class="h4 mb-0">💅 CRM</h1>
+                <span class="badge bg-dark fs-6" id="currentSalonTitle">-</span>
+                <button class="btn btn-sm btn-outline-secondary py-0" id="changeSalonBtn">Change</button>
             </div>
-            <div class="d-flex gap-2 flex-wrap">
-                <button class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#manageServicesModal">⚙️ Services</button>
-                <button class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#manageExpensesModal">💸 Expenses Config</button>
-                <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addMasterModal">+ New Master</button>
-                <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addTransactionModal">+ New Record</button>
+            
+            <div class="header-toolbar">
+                <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#manageServicesModal">⚙️ Services</button>
+                <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#manageExpensesModal">💸 Expenses Config</button>
+                <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addMasterModal">+ New Master</button>
+                <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#addTransactionModal">+ New Record</button>
             </div>
         </header>
 
@@ -119,8 +120,8 @@
                     <thead>
                         <tr>
                             <th>Date / Time</th>
-                            <th>Master</th>
-                            <th>Service</th>
+                            <th>Master / Category</th>
+                            <th>Service / Details</th>
                             <th>Amount</th>
                             <th>Type</th>
                         </tr>
@@ -131,7 +132,7 @@
         </div>
     </div>
 
-    <!-- MODAL: ADD TRANSACTION (NEW RECORD) -->
+    <!-- MODAL: ADD TRANSACTION -->
     <div class="modal fade" id="addTransactionModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
@@ -153,7 +154,6 @@
                             <input type="datetime-local" class="form-control" id="txDateTime" required>
                         </div>
                         
-                        <!-- Service Fields -->
                         <div id="serviceFieldsContainer">
                             <div class="mb-3">
                                 <label class="form-label">Master</label>
@@ -165,7 +165,6 @@
                             </div>
                         </div>
 
-                        <!-- Expense Fields -->
                         <div id="expenseFieldsContainer" style="display: none;">
                             <div class="mb-3">
                                 <label class="form-label">Expense Category</label>
@@ -255,7 +254,7 @@
                     <form id="addExpenseCatForm" class="mb-3 pb-3 border-bottom">
                         <h6>Add Expense Category</h6>
                         <div class="mb-2">
-                            <input type="text" class="form-control" id="expenseCatNameInput" placeholder="Rent, Materials, Utilities..." required>
+                            <input type="text" class="form-control" id="expenseCatNameInput" placeholder="Rent, Materials..." required>
                         </div>
                         <button type="submit" class="btn btn-sm btn-primary w-100">+ Add Category</button>
                     </form>
