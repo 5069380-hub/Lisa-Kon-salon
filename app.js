@@ -1,7 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getFirestore, collection, getDocs, addDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getFirestore, collection, getDocs, addDoc, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-// Конфигурация Firebase с вашим API-ключом
 const firebaseConfig = {
     apiKey: "AIzaSyDablK3aI7Yf15TwYXAhl_OBJaIg1RMgqo",
     authDomain: "lisa-kon-salon.firebaseapp.com",
@@ -14,195 +13,296 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-let appData = { staff: [], expenses: [], transactions: [] };
+let currentSalon = localStorage.getItem('selectedSalon') || null;
+let appData = { staff: [], transactions: [], services: [], expenseCategories: [] };
 let financeChartInstance = null;
 
 document.addEventListener("DOMContentLoaded", async () => {
-    try {
-        await loadDataFromFirebase();
-        document.getElementById('txDate').valueAsDate = new Date();
-        initApp();
-        setupFormsHandlers();
-    } catch (error) {
-        console.error("Error loading data:", error);
-    }
+    checkSalonSelection();
+    
+    // Set default datetime-local value
+    const now = new Date();
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    document.getElementById('txDateTime').value = now.toISOString().slice(0, 16);
+
+    document.getElementById('recordTypeSelector').addEventListener('change', (e) => {
+        const isService = e.target.value === 'Service';
+        document.getElementById('serviceFieldsContainer').style.display = isService ? 'block' : 'none';
+        document.getElementById('expenseFieldsContainer').style.display = isService ? 'none' : 'block';
+    });
+
+    document.getElementById('txService').addEventListener('change', (e) => {
+        const selectedOpt = e.target.selectedOptions[0];
+        if (selectedOpt && selectedOpt.dataset.price) {
+            document.getElementById('txAmount').value = selectedOpt.dataset.price;
+        }
+    });
+
+    document.getElementById('changeSalonBtn').addEventListener('click', () => {
+        localStorage.removeItem('selectedSalon');
+        location.reload();
+    });
+
+    setupSalonButtons();
+    setupFormHandlers();
 });
 
-async function loadDataFromFirebase() {
-    const staffSnapshot = await getDocs(collection(db, "staff"));
-    appData.staff = staffSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+function checkSalonSelection() {
+    const modalEl = document.getElementById('salonSelectModal');
+    const modal = new bootstrap.Modal(modalEl);
 
-    const expensesSnapshot = await getDocs(collection(db, "expenses"));
-    appData.expenses = expensesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-    const txSnapshot = await getDocs(collection(db, "transactions"));
-    appData.transactions = txSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    if (!currentSalon) {
+        modal.show();
+    } else {
+        document.getElementById('currentSalonTitle').innerText = currentSalon;
+        loadAppData();
+    }
 }
 
-function initApp() {
-    const { staff, transactions, expenses } = appData;
-
-    const masterSelect = document.getElementById('txMaster');
-    masterSelect.innerHTML = '';
-    if (staff.length === 0) {
-        masterSelect.innerHTML = `<option value="" disabled selected>No masters available</option>`;
-    } else {
-        staff.forEach(s => {
-            masterSelect.innerHTML += `<option value="${s.name}">${s.name}</option>`;
+function setupSalonButtons() {
+    document.querySelectorAll('.salon-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            currentSalon = btn.getAttribute('data-salon');
+            localStorage.setItem('selectedSalon', currentSalon);
+            document.getElementById('currentSalonTitle').innerText = currentSalon;
+            const modalEl = document.getElementById('salonSelectModal');
+            const modal = bootstrap.Modal.getInstance(modalEl);
+            modal.hide();
+            loadAppData();
         });
+    });
+}
+
+async function loadAppData() {
+    try {
+        const staffSnap = await getDocs(collection(db, "staff"));
+        appData.staff = staffSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        const txSnap = await getDocs(collection(db, "transactions"));
+        appData.transactions = txSnap.docs.map(d => ({ id: d.id, ...d.data() }))
+            .filter(t => t.salon === currentSalon);
+
+        const srvSnap = await getDocs(collection(db, "services"));
+        appData.services = srvSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        const expCatSnap = await getDocs(collection(db, "expenseCategories"));
+        appData.expenseCategories = expCatSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        renderApp();
+    } catch (err) {
+        console.error("Error loading data:", err);
+    }
+}
+
+function renderApp() {
+    renderDropdowns();
+    renderStaffCards();
+    renderTransactionsTable();
+    renderConfigLists();
+    calculateAndRenderFinancials();
+}
+
+function renderDropdowns() {
+    const masterSelect = document.getElementById('txMaster');
+    masterSelect.innerHTML = appData.staff.length ? '' : '<option disabled selected>No masters available</option>';
+    appData.staff.forEach(s => {
+        masterSelect.innerHTML += `<option value="${s.name}">${s.name}</option>`;
+    });
+
+    const serviceSelect = document.getElementById('txService');
+    serviceSelect.innerHTML = appData.services.length ? '' : '<option disabled selected>No services available</option>';
+    appData.services.forEach(srv => {
+        serviceSelect.innerHTML += `<option value="${srv.name}" data-price="${srv.price}">${srv.name} ($${srv.price})</option>`;
+    });
+    if (appData.services.length && document.getElementById('txAmount').value === '') {
+        document.getElementById('txAmount').value = appData.services[0].price;
     }
 
-    let totalRevenue = 0;
+    const expCatSelect = document.getElementById('txExpenseCategory');
+    expCatSelect.innerHTML = appData.expenseCategories.length ? '' : '<option disabled selected>No categories available</option>';
+    appData.expenseCategories.forEach(cat => {
+        expCatSelect.innerHTML += `<option value="${cat.name}">${cat.name}</option>`;
+    });
+}
+
+function renderStaffCards() {
+    const container = document.getElementById('staffCardsContainer');
+    container.innerHTML = '';
+    if (!appData.staff.length) {
+        container.innerHTML = `<div class="col-12 text-muted text-center py-3">No masters added yet. Click "+ New Master".</div>`;
+        return;
+    }
+
+    appData.staff.forEach(emp => {
+        let rev = 0;
+        appData.transactions.forEach(t => {
+            if (t.type === 'Service' && t.master === emp.name) rev += Number(t.amount);
+        });
+        const payout = (rev * Number(emp.servicePercent)) / 100;
+
+        container.innerHTML += `
+            <div class="col-md-4">
+                <div class="card shadow-sm border-0 p-3 h-100">
+                    <div class="d-flex align-items-center mb-3">
+                        <img src="${emp.photo}" class="master-avatar me-3">
+                        <div>
+                            <h5 class="mb-1">${emp.name}</h5>
+                            <p class="text-muted mb-0 small">Phone: ${emp.phone}</p>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="d-flex justify-content-between mb-1"><span>Commission:</span><strong>${emp.servicePercent}%</strong></div>
+                    <div class="d-flex justify-content-between mb-1"><span>Master Revenue:</span><strong class="text-success">$${rev.toLocaleString()}</strong></div>
+                    <div class="d-flex justify-content-between"><span>Payout:</span><strong class="text-danger">$${Math.round(payout).toLocaleString()}</strong></div>
+                </div>
+            </div>
+        `;
+    });
+}
+
+function renderTransactionsTable() {
+    const tbody = document.querySelector('#transactionsTable tbody');
+    tbody.innerHTML = '';
+    if (!appData.transactions.length) {
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted">No records found for ${currentSalon}</td></tr>`;
+        return;
+    }
+
+    appData.transactions.sort((a, b) => new Date(b.dateTime) - new Date(a.dateTime)).forEach(t => {
+        const badge = t.type === 'Service' ? '<span class="badge bg-success">Service</span>' : '<span class="badge bg-warning text-dark">Expense</span>';
+        tbody.innerHTML += `
+            <tr>
+                <td>${t.dateTime.replace('T', ' ')}</td>
+                <td>${t.master || t.category || '-'}</td>
+                <td>${t.service || t.category || '-'}</td>
+                <td>$${Number(t.amount).toLocaleString()}</td>
+                <td>${badge}</td>
+            </tr>
+        `;
+    });
+}
+
+function renderConfigLists() {
+    const srvList = document.getElementById('servicesListContainer');
+    srvList.innerHTML = appData.services.length ? '' : '<li class="list-group-item text-muted">No services added</li>';
+    appData.services.forEach(s => {
+        srvList.innerHTML += `<li class="list-group-item d-flex justify-content-between align-items-center">${s.name} <strong>$${s.price}</strong> <button class="btn btn-sm btn-outline-danger" onclick="deleteItem('services', '${s.id}')">Delete</button></li>`;
+    });
+
+    const expList = document.getElementById('expenseCatListContainer');
+    expList.innerHTML = appData.expenseCategories.length ? '' : '<li class="list-group-item text-muted">No categories added</li>';
+    appData.expenseCategories.forEach(c => {
+        expList.innerHTML += `<li class="list-group-item d-flex justify-content-between align-items-center">${c.name} <button class="btn btn-sm btn-outline-danger" onclick="deleteItem('expenseCategories', '${c.id}')">Delete</button></li>`;
+    });
+}
+
+window.deleteItem = async function(colName, id) {
+    if (confirm("Are you sure you want to delete this item?")) {
+        await deleteDoc(doc(db, colName, id));
+        loadAppData();
+    }
+};
+
+function calculateAndRenderFinancials() {
+    let totalRev = 0;
     let totalPayroll = 0;
+    let totalExp = 0;
     let revToday = 0;
     let revMonth = 0;
     let revYear = 0;
 
     const todayStr = new Date().toISOString().split('T')[0];
-    const currentMonthPrefix = todayStr.substring(0, 7); 
-    const currentYearPrefix = todayStr.substring(0, 4);   
+    const monthPrefix = todayStr.substring(0, 7);
+    const yearPrefix = todayStr.substring(0, 4);
 
-    const staffContainer = document.getElementById('staffCardsContainer');
-    staffContainer.innerHTML = '';
-
-    if (staff.length === 0) {
-        staffContainer.innerHTML = `<div class="col-12 text-muted text-center py-3">No masters added yet. Click "+ New Master" to add your first employee.</div>`;
-    }
-
-    staff.forEach(employee => {
-        let masterRevenue = 0;
-        transactions.forEach(tx => {
-            if (tx.master === employee.name) {
-                masterRevenue += Number(tx.amount);
-            }
+    appData.staff.forEach(emp => {
+        let empRev = 0;
+        appData.transactions.forEach(t => {
+            if (t.type === 'Service' && t.master === emp.name) empRev += Number(t.amount);
         });
-
-        const masterPayout = (masterRevenue * Number(employee.servicePercent)) / 100;
-        totalRevenue += masterRevenue;
-        totalPayroll += masterPayout;
-
-        staffContainer.innerHTML += `
-            <div class="col-md-4 mb-3">
-                <div class="card shadow-sm border-0 p-3 h-100">
-                    <div class="d-flex align-items-center mb-3">
-                        <img src="${employee.photo}" class="master-avatar me-3" alt="${employee.name}">
-                        <div>
-                            <h5 class="mb-1">${employee.name}</h5>
-                            <p class="text-muted mb-0 small">Phone: ${employee.phone}</p>
-                            <p class="text-muted mb-0 small">Age: ${employee.age}</p>
-                        </div>
-                    </div>
-                    <hr>
-                    <div class="d-flex justify-content-between mb-1">
-                        <span>Commission Rate:</span>
-                        <strong>${employee.servicePercent}%</strong>
-                    </div>
-                    <div class="d-flex justify-content-between mb-1">
-                        <span>Master Revenue:</span>
-                        <strong class="text-success">$${masterRevenue.toLocaleString()}</strong>
-                    </div>
-                    <div class="d-flex justify-content-between">
-                        <span>Payout:</span>
-                        <strong class="text-danger">$${Math.round(masterPayout).toLocaleString()}</strong>
-                    </div>
-                </div>
-            </div>
-        `;
+        totalPayroll += (empRev * Number(emp.servicePercent)) / 100;
     });
 
-    transactions.forEach(tx => {
-        if (tx.date === todayStr) revToday += Number(tx.amount);
-        if (tx.date.startsWith(currentMonthPrefix)) revMonth += Number(tx.amount);
-        if (tx.date.startsWith(currentYearPrefix)) revYear += Number(tx.amount);
+    appData.transactions.forEach(t => {
+        const datePart = t.dateTime.split('T')[0];
+        if (t.type === 'Service') {
+            totalRev += Number(t.amount);
+            if (datePart === todayStr) revToday += Number(t.amount);
+            if (datePart.startsWith(monthPrefix)) revMonth += Number(t.amount);
+            if (datePart.startsWith(yearPrefix)) revYear += Number(t.amount);
+        } else if (t.type === 'Expense') {
+            totalExp += Number(t.amount);
+        }
     });
 
-    let totalExpenses = expenses.reduce((sum, exp) => sum + Number(exp.amount), 0);
-    let netProfit = totalRevenue - totalPayroll - totalExpenses;
+    const netProfit = totalRev - totalPayroll - totalExp;
 
-    document.getElementById('totalRevenue').innerText = '$' + totalRevenue.toLocaleString();
+    document.getElementById('totalRevenue').innerText = '$' + totalRev.toLocaleString();
     document.getElementById('totalPayroll').innerText = '$' + Math.round(totalPayroll).toLocaleString();
-    document.getElementById('totalExpenses').innerText = '$' + totalExpenses.toLocaleString();
+    document.getElementById('totalExpenses').innerText = '$' + totalExp.toLocaleString();
     document.getElementById('netProfit').innerText = '$' + Math.round(netProfit).toLocaleString();
 
     document.getElementById('revToday').innerText = '$' + revToday.toLocaleString();
     document.getElementById('revMonth').innerText = '$' + revMonth.toLocaleString();
     document.getElementById('revYear').innerText = '$' + revYear.toLocaleString();
 
-    const txTbody = document.querySelector('#transactionsTable tbody');
-    txTbody.innerHTML = '';
-    if (transactions.length === 0) {
-        txTbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted">No transactions recorded yet</td></tr>`;
-    } else {
-        transactions.forEach(tx => {
-            txTbody.innerHTML += `
-                <tr>
-                    <td>${tx.date}</td>
-                    <td>${tx.master}</td>
-                    <td>${tx.client}</td>
-                    <td>${tx.item}</td>
-                    <td>$${Number(tx.amount).toLocaleString()}</td>
-                    <td><span class="badge bg-secondary">${tx.type}</span></td>
-                </tr>
-            `;
-        });
-    }
-
-    updateChart(totalRevenue, totalPayroll, totalExpenses, netProfit);
+    updateChart(totalRev, totalPayroll, totalExp, netProfit);
 }
 
-function setupFormsHandlers() {
+function setupFormHandlers() {
     document.getElementById('masterForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         const newMaster = {
             name: document.getElementById('masterName').value,
             phone: document.getElementById('masterPhone').value,
-            age: Number(document.getElementById('masterAge').value),
             photo: document.getElementById('masterPhoto').value,
             servicePercent: Number(document.getElementById('masterPercent').value)
         };
+        await addDoc(collection(db, "staff"), newMaster);
+        bootstrap.Modal.getInstance(document.getElementById('addMasterModal')).hide();
+        e.target.reset();
+        loadAppData();
+    });
 
-        try {
-            const docRef = await addDoc(collection(db, "staff"), newMaster);
-            appData.staff.push({ id: docRef.id, ...newMaster });
-            
-            const modalEl = document.getElementById('addMasterModal');
-            const modalInstance = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
-            modalInstance.hide();
-            
-            initApp();
-            e.target.reset();
-        } catch (error) {
-            console.error("Error adding master:", error);
-            alert("Failed to save master to database.");
-        }
+    document.getElementById('addServiceForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const newSrv = {
+            name: document.getElementById('serviceNameInput').value,
+            price: Number(document.getElementById('servicePriceInput').value)
+        };
+        await addDoc(collection(db, "services"), newSrv);
+        e.target.reset();
+        loadAppData();
+    });
+
+    document.getElementById('addExpenseCatForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const newCat = { name: document.getElementById('expenseCatNameInput').value };
+        await addDoc(collection(db, "expenseCategories"), newCat);
+        e.target.reset();
+        loadAppData();
     });
 
     document.getElementById('transactionForm').addEventListener('submit', async (e) => {
         e.preventDefault();
-        const newTx = {
-            date: document.getElementById('txDate').value,
-            master: document.getElementById('txMaster').value,
-            client: document.getElementById('txClient').value,
-            item: document.getElementById('txItem').value,
-            amount: parseFloat(document.getElementById('txAmount').value),
-            type: document.getElementById('txType').value
+        const type = document.getElementById('recordTypeSelector').value;
+        const record = {
+            salon: currentSalon,
+            type: type,
+            dateTime: document.getElementById('txDateTime').value,
+            amount: parseFloat(document.getElementById('txAmount').value)
         };
 
-        try {
-            const docRef = await addDoc(collection(db, "transactions"), newTx);
-            appData.transactions.push({ id: docRef.id, ...newTx });
-            
-            const modalEl = document.getElementById('addTransactionModal');
-            const modalInstance = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
-            modalInstance.hide();
-            
-            initApp();
-            e.target.reset();
-            document.getElementById('txDate').valueAsDate = new Date();
-        } catch (error) {
-            console.error("Error adding transaction:", error);
-            alert("Failed to save transaction to database.");
+        if (type === 'Service') {
+            record.master = document.getElementById('txMaster').value;
+            record.service = document.getElementById('txService').value;
+        } else {
+            record.category = document.getElementById('txExpenseCategory').value;
         }
+
+        await addDoc(collection(db, "transactions"), record);
+        bootstrap.Modal.getInstance(document.getElementById('addTransactionModal')).hide();
+        loadAppData();
     });
 }
 
@@ -215,7 +315,6 @@ function updateChart(rev, payroll, exp, profit) {
         data: {
             labels: ['Revenue', 'Payroll', 'Expenses', 'Profit'],
             datasets: [{
-                label: 'Amount in USD',
                 data: [rev, payroll, exp, profit],
                 backgroundColor: ['#198754', '#dc3545', '#ffc107', '#0d6efd']
             }]
