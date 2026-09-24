@@ -22,19 +22,18 @@ document.addEventListener("DOMContentLoaded", async () => {
     
     const now = new Date();
     now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    const todayStr = now.toISOString().slice(0, 10);
     document.getElementById('txDateTime').value = now.toISOString().slice(0, 16);
+    document.getElementById('calendarDateSelect').value = todayStr;
+
+    document.getElementById('calendarDateSelect').addEventListener('change', () => {
+        renderDailyView();
+    });
 
     document.getElementById('recordTypeSelector').addEventListener('change', (e) => {
         const isService = e.target.value === 'Service';
         document.getElementById('serviceFieldsContainer').style.display = isService ? 'block' : 'none';
         document.getElementById('expenseFieldsContainer').style.display = isService ? 'none' : 'block';
-    });
-
-    document.getElementById('txService').addEventListener('change', (e) => {
-        const selectedOpt = e.target.selectedOptions[0];
-        if (selectedOpt && selectedOpt.dataset.price) {
-            document.getElementById('txAmount').value = selectedOpt.dataset.price;
-        }
     });
 
     document.getElementById('changeSalonBtn').addEventListener('click', () => {
@@ -99,6 +98,7 @@ function renderApp() {
     renderTransactionsTable();
     renderConfigLists();
     calculateAndRenderFinancials();
+    renderDailyView();
 }
 
 function renderDropdowns() {
@@ -108,20 +108,41 @@ function renderDropdowns() {
         masterSelect.innerHTML += `<option value="${s.name}">${s.name}</option>`;
     });
 
-    const serviceSelect = document.getElementById('txService');
-    serviceSelect.innerHTML = appData.services.length ? '' : '<option disabled selected>No services available</option>';
-    appData.services.forEach(srv => {
-        serviceSelect.innerHTML += `<option value="${srv.name}" data-price="${srv.price}">${srv.name} ($${srv.price})</option>`;
+    // Render Services Checkboxes for multi-selection
+    const srvContainer = document.getElementById('servicesCheckboxesContainer');
+    srvContainer.innerHTML = appData.services.length ? '' : '<span class="text-muted small">No services configured</span>';
+    appData.services.forEach((srv, index) => {
+        srvContainer.innerHTML += `
+            <div class="service-checkbox-item d-flex justify-content-between align-items-center">
+                <div class="form-check">
+                    <input class="form-check-input service-chk" type="checkbox" value="${srv.name}" data-price="${srv.price}" id="srv_${index}">
+                    <label class="form-check-label fw-bold" for="srv_${index}">${srv.name}</label>
+                </div>
+                <span class="text-success">$${srv.price}</span>
+            </div>
+        `;
     });
-    if (appData.services.length && document.getElementById('txAmount').value === '') {
-        document.getElementById('txAmount').value = appData.services[0].price;
-    }
+
+    // Add event listeners to calculate total sum automatically when checkboxes change
+    document.querySelectorAll('.service-chk').forEach(chk => {
+        chk.addEventListener('change', updateCalculatedAmount);
+    });
 
     const expCatSelect = document.getElementById('txExpenseCategory');
     expCatSelect.innerHTML = appData.expenseCategories.length ? '' : '<option disabled selected>No categories available</option>';
     appData.expenseCategories.forEach(cat => {
         expCatSelect.innerHTML += `<option value="${cat.name}">${cat.name}</option>`;
     });
+}
+
+function updateCalculatedAmount() {
+    let total = 0;
+    let selectedNames = [];
+    document.querySelectorAll('.service-chk:checked').forEach(chk => {
+        total += Number(chk.dataset.price);
+        selectedNames.push(chk.value);
+    });
+    document.getElementById('txAmount').value = total;
 }
 
 function renderStaffCards() {
@@ -177,6 +198,30 @@ function renderTransactionsTable() {
                 <td>$${Number(t.amount).toLocaleString()}</td>
                 <td>${badge}</td>
             </tr>
+        `;
+    });
+}
+
+function renderDailyView() {
+    const selectedDate = document.getElementById('calendarDateSelect').value;
+    const container = document.getElementById('dailyViewContainer');
+    container.innerHTML = '';
+
+    const dayTransactions = appData.transactions.filter(t => t.dateTime.startsWith(selectedDate));
+
+    if (!dayTransactions.length) {
+        container.innerHTML = `<small class="text-muted">No records for ${selectedDate}</small>`;
+        return;
+    }
+
+    dayTransactions.forEach(t => {
+        const title = t.type === 'Service' ? `${t.master} (${t.service})` : `Expense: ${t.category}`;
+        const color = t.type === 'Service' ? 'text-success' : 'text-warning';
+        container.innerHTML += `
+            <div class="d-flex justify-content-between align-items-center border-bottom pb-1 mb-1 small">
+                <div><strong>${t.dateTime.split('T')[1]}</strong> - ${title}</div>
+                <div class="fw-bold ${color}">$${Number(t.amount).toLocaleString()}</div>
+            </div>
         `;
     });
 }
@@ -266,7 +311,7 @@ function setupFormHandlers() {
             loadAppData();
         } catch (err) {
             console.error("Error saving master:", err);
-            alert("Failed to save master. Check Firestore rules.");
+            alert("Failed to save master.");
         }
     });
 
@@ -301,7 +346,11 @@ function setupFormHandlers() {
 
         if (type === 'Service') {
             record.master = document.getElementById('txMaster').value;
-            record.service = document.getElementById('txService').value;
+            let checkedServices = [];
+            document.querySelectorAll('.service-chk:checked').forEach(chk => {
+                checkedServices.push(chk.value);
+            });
+            record.service = checkedServices.length ? checkedServices.join(', ') : 'Custom Service';
         } else {
             record.category = document.getElementById('txExpenseCategory').value;
         }
