@@ -9,11 +9,12 @@
     <style>
         .master-avatar { width: 60px; height: 60px; object-fit: cover; border-radius: 50%; }
         .header-toolbar { display: flex; flex-wrap: nowrap; align-items: center; gap: 10px; overflow-x: auto; white-space: nowrap; }
+        .service-checkbox-item { background: #f8f9fa; border-radius: 6px; padding: 8px 12px; margin-bottom: 6px; border: 1px solid #dee2e6; }
     </style>
 </head>
 <body class="bg-light">
 
-    <!-- SALON SELECTION MODAL (SC & BH) -->
+    <!-- SALON SELECTION MODAL -->
     <div class="modal fade" id="salonSelectModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content shadow-lg border-0">
@@ -82,7 +83,7 @@
             </div>
         </div>
 
-        <!-- CHARTS & PERIODS -->
+        <!-- CHARTS & PERIODS & CALENDAR -->
         <div class="row mb-4 g-3">
             <div class="col-md-8">
                 <div class="card shadow-sm border-0 p-3 h-100">
@@ -92,18 +93,14 @@
             </div>
             <div class="col-md-4">
                 <div class="card shadow-sm border-0 p-3 h-100">
-                    <h5>Period Summary</h5>
-                    <ul class="list-group list-group-flush mt-3">
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            Today <span id="revToday" class="fw-bold">$0</span>
-                        </li>
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            Current Month <span id="revMonth" class="fw-bold">$0</span>
-                        </li>
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            Current Year <span id="revYear" class="fw-bold">$0</span>
-                        </li>
-                    </ul>
+                    <h5>Calendar & Daily View</h5>
+                    <div class="mb-3 mt-2">
+                        <label class="form-label small text-muted">Select Date to View Transactions:</label>
+                        <input type="date" class="form-control" id="calendarDateSelect">
+                    </div>
+                    <div class="border rounded p-2 bg-white" style="max-height: 180px; overflow-y: auto;" id="dailyViewContainer">
+                        <small class="text-muted">Select a date above to inspect records.</small>
+                    </div>
                 </div>
             </div>
         </div>
@@ -114,7 +111,7 @@
 
         <!-- TRANSACTIONS LOG -->
         <div class="card shadow-sm border-0 p-4">
-            <h4>Operations Log</h4>
+            <h4>All Operations Log</h4>
             <div class="table-responsive">
                 <table class="table table-striped align-middle mt-2" id="transactionsTable">
                     <thead>
@@ -132,7 +129,7 @@
         </div>
     </div>
 
-    <!-- MODAL: ADD TRANSACTION -->
+    <!-- MODAL: ADD TRANSACTION (MULTI-SERVICE) -->
     <div class="modal fade" id="addTransactionModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
@@ -160,8 +157,10 @@
                                 <select class="form-select" id="txMaster"></select>
                             </div>
                             <div class="mb-3">
-                                <label class="form-label">Service</label>
-                                <select class="form-select" id="txService"></select>
+                                <label class="form-label">Select Services (Check one or multiple)</label>
+                                <div id="servicesCheckboxesContainer" class="border rounded p-2" style="max-height: 200px; overflow-y: auto;">
+                                    <!-- Populated dynamically -->
+                                </div>
                             </div>
                         </div>
 
@@ -173,8 +172,8 @@
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label">Amount ($)</label>
-                            <input type="number" step="0.01" class="form-control" id="txAmount" placeholder="50" required>
+                            <label class="form-label">Total Amount ($)</label>
+                            <input type="number" step="0.01" class="form-control" id="txAmount" placeholder="Calculated automatically or custom" required>
                         </div>
                         <button type="submit" class="btn btn-success w-100">Save Record</button>
                     </form>
